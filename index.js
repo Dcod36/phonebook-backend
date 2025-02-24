@@ -1,84 +1,47 @@
-const express = require('express')
-const cors = require('cors')
-const morgan = require('morgan')
-const path = require('path')
+require('dotenv').config(); // Load environment variables
 
-const app = express()
-app.use(express.json())  // Enable JSON body parsing
-app.use(cors())          // Enable CORS for frontend access
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const Person = require('./models/person'); // Import Person model
 
-// Middleware to log incoming requests
-app.use((request, response, next) => {
-  console.log(`${request.method} ${request.url}`)
-  if (Object.keys(request.body).length > 0) {
-    console.log('Request Body:', request.body)
-  }
-  next()
-})
+const app = express();
 
-// Serve the frontend build files from the "dist" folder
-app.use(express.static(path.join(__dirname, 'dist')))
+app.use(express.json()); // Middleware to parse JSON
+app.use(cors());
 
-let persons = [
-  { id: 1, name: "Arto Hellas", number: "040-123456" },
-  { id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
-  { id: 3, name: "Dan Abramov", number: "12-43-234345" },
-  { id: 4, name: "Mary Poppendieck", number: "39-23-6423122" }
-]
+const url = process.env.MONGODB_URI; // Get MongoDB URI from .env
 
-// Get all persons (API Endpoint)
-app.get('/api/persons', (request, response) => {
-  response.json(persons)
-})
+mongoose
+  .connect(url)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((error) => console.log('Error connecting to MongoDB:', error.message));
 
-// Get a single person by ID
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(p => p.id === id)
-  
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).json({ error: 'Person not found' })
-  }
-})
+// Get all persons
+app.get('/api/persons', (req, res) => {
+  Person.find({})
+    .then((persons) => res.json(persons))
+    .catch((error) => res.status(500).json({ error: error.message }));
+});
 
 // Add a new person
-app.post('/api/persons', (request, response) => {
-  const body = request.body
+app.post('/api/persons', (req, res) => {
+  const { name, number } = req.body;
 
-  if (!body.name || !body.number) {
-    return response.status(400).json({ error: 'Name or number is missing' })
+  if (!name || !number) {
+    return res.status(400).json({ error: 'Name or number is missing' });
   }
 
-  if (persons.find(p => p.name === body.name)) {
-    return response.status(400).json({ error: 'Name must be unique' })
-  }
+  const person = new Person({ name, number });
 
-  const person = {
-    id: Math.floor(Math.random() * 10000), // Generate a random ID
-    name: body.name,
-    number: body.number
-  }
+  person
+    .save()
+    .then((savedPerson) => res.json(savedPerson))
+    .catch((error) => res.status(500).json({ error: error.message }));
+});
 
-  persons = persons.concat(person)
-  response.json(person)
-})
-
-// Delete a person
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(p => p.id !== id)
-  response.status(204).end()
-})
-
-// Serve frontend for all non-API routes
-app.get('*', (request, response) => {
-  response.sendFile(path.join(__dirname, 'dist', 'index.html'))
-})
-
-// Server status message
-const PORT = process.env.PORT || 3001
+// Start the server
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
