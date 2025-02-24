@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const morgan = require('morgan')
+const path = require('path')
 
 const app = express()
 app.use(express.json())  // Enable JSON body parsing
@@ -15,6 +16,9 @@ app.use((request, response, next) => {
   next()
 })
 
+// Serve the frontend build files from the "dist" folder
+app.use(express.static(path.join(__dirname, 'dist')))
+
 let persons = [
   { id: 1, name: "Arto Hellas", number: "040-123456" },
   { id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
@@ -22,7 +26,7 @@ let persons = [
   { id: 4, name: "Mary Poppendieck", number: "39-23-6423122" }
 ]
 
-// Get all persons
+// Get all persons (API Endpoint)
 app.get('/api/persons', (request, response) => {
   response.json(persons)
 })
@@ -66,6 +70,11 @@ app.delete('/api/persons/:id', (request, response) => {
   const id = Number(request.params.id)
   persons = persons.filter(p => p.id !== id)
   response.status(204).end()
+})
+
+// Serve frontend for all non-API routes
+app.get('*', (request, response) => {
+  response.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
 
 // Server status message
