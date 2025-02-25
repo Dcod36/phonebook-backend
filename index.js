@@ -10,6 +10,11 @@ app.use(express.json())
 app.use(cors())
 app.use(morgan('tiny'))
 
+// ✅ Fix for "GET / 404" error
+app.get('/', (req, res) => {
+  res.send('Server is running! Use /api/persons to fetch data.');
+});
+
 app.get('/api/persons', (request, response) => {
   Person.find({})
     .then(persons => response.json(persons))
